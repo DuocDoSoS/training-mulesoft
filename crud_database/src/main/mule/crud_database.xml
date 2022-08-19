@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="74e9d70a-8212-4fe1-bfc0-f6984ac834ea" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config1" doc:name="Database Config" doc:id="fc429b8c-c4b6-4dc3-bac2-ef518ab241d3" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Dvd#2001" database="db_test" />
+	</db:config>
+	<db:config name="Database_Config2" doc:name="Database Config" doc:id="6bee2a9b-c278-4622-9b73-fcccf7ed1102" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Dvd#2001" database="db_test" />
+	</db:config>
+	<flow name="getAllProduct" doc:id="2df3d5c8-a103-4b93-8a83-5509b0da34fa" >
+		<http:listener doc:name="Listener" doc:id="bd34d66a-1d19-4824-bb38-caaf676f66cd" config-ref="HTTP_Listener_config" path="/getAllProduct" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="53e080f1-cd88-4544-b721-7c3d40fe9f7b" config-ref="Database_Config1">
+			<db:sql ><![CDATA[select *
+from product]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="0ff2006f-49ee-4532-afac-d4c33857e00e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="46f18830-4f17-43e0-b9ac-2e62882a2766" message="successfully"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="360fe6f1-7067-43b1-9bf1-230bb218e75f" >
+				<logger level="INFO" doc:name="Logger" doc:id="52622ef9-8053-4983-9bc3-3d7e24c5281d" message="connect fail"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="getProductById" doc:id="9b9ee050-f570-4e5b-92a1-a3ee67b25830" >
+		<http:listener doc:name="Listener" doc:id="d2e22681-cd80-4975-b782-229052ebc662" config-ref="HTTP_Listener_config" path="/getProduct/{id}"/>
+		<db:select doc:name="Select" doc:id="ff42e9dc-6c75-4ff9-bc5f-96648c854118" config-ref="Database_Config2">
+			<db:sql ><![CDATA[select *
+from product
+where id = :ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'ID': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="d5d13965-02b8-4347-ae19-9edde7f93b50" >
+			<when expression="#[payload[0] != null]">
+				<ee:transform doc:name="Transform Message" doc:id="405e542a-b9ca-4c05-b8de-8b48245b9928">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="6952368e-7406-4076-a731-46febf5f9f50" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "not found by id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="d587e558-25c5-4528-969a-6305d02832c0" >
+				<logger level="INFO" doc:name="Copy_of_Logger" doc:id="adcb3120-3654-4b74-8ff1-7ffd8d3440be" message="connect fail" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="insert_Product" doc:id="4411647d-3905-42e6-880a-ec789afe5097" >
+		<http:listener doc:name="Listener" doc:id="63047115-3b1d-4f0a-8860-62a1e2ec2879" config-ref="HTTP_Listener_config" path="/insertProduct"/>
+		<ee:transform doc:name="Transform Message" doc:id="972c68e1-0d60-443f-a3fd-42ae49f95383" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="decription" ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-variable>
+				<ee:set-variable variableName="name_product" ><![CDATA[%dw 2.0
+output application/json
+---
+payload[1]]]></ee:set-variable>
+				<ee:set-variable variableName="year" ><![CDATA[%dw 2.0
+output application/json
+---
+payload[2]]]></ee:set-variable>
+				<ee:set-variable variableName="price" ><![CDATA[%dw 2.0
+output application/json
+---
+payload[3]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="05749484-a4a0-4d47-9f19-ee9a9dabcd4c" config-ref="Database_Config1">
+			<db:sql ><![CDATA[INSERT INTO product (decription, name_product, year,price)
+VALUES (:description, :name, :year,:price);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{"name" : vars.name_product,
+	"description" : vars.decription,
+	"price" : vars.price,
+	"year" : vars.year
+	
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="626ac113-177b-4b5e-95ed-1bfb5b7f9b95" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "insert successfully"
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="bc137c2f-6faa-4eb6-9e03-6dcdee8a6a47" >
+				<logger level="INFO" doc:name="Copy_of_Logger" doc:id="5a106a50-7539-4c4a-bbfd-706105808d36" message="connect fail" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="delete_Product" doc:id="0ab276de-fbd5-4ba5-8589-56f53d663df9" >
+		<http:listener doc:name="Listener" doc:id="99780fe5-c1f3-4850-8e9d-1a60ca680f87" config-ref="HTTP_Listener_config" path="/deleteProduct/{id}"/>
+		<db:select doc:name="Select" doc:id="e0318f04-d5d9-430f-a242-97e2194f4fc4" config-ref="Database_Config2">
+			<db:sql><![CDATA[select *
+from product
+where id = :ID]]></db:sql>
+			<db:input-parameters><![CDATA[#[{'ID': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="a8aeaec9-3b2b-4d9c-8801-a10b8646dc1b">
+			<when expression="#[payload[0] != null]">
+				<db:delete doc:name="Delete" doc:id="9b25f1ed-a30d-4b7f-9a52-fe0f1acc2072" config-ref="Database_Config1">
+			<db:sql><![CDATA[delete
+from product
+where id=:ID
+]]></db:sql>
+			<db:input-parameters><![CDATA[#[{"ID" : payload[0][4]}]]]></db:input-parameters>
+		</db:delete>
+				<ee:transform doc:name="Transform Message" doc:id="3f076796-f5fc-40cc-b974-c4695a98e801">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" : "deleted by id"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="f0c24a97-7c07-469c-aaf1-725cbc9fd6c9">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" : "not found by id "
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_Copy_of_On Error Propagate" doc:id="bbaa1900-b6a0-4671-81c6-1a29cbfbd4dc" >
+				<logger level="INFO" doc:name="Copy_of_Copy_of_Logger" doc:id="807df3ff-2ef3-402f-8972-8130047542fa" message="connect fail" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="update_Product" doc:id="3976762d-f4bb-4b35-ba69-8da546f45a59" >
+		<http:listener doc:name="Listener" doc:id="2b9aad4a-bc50-492a-9424-2bcfc3022643" config-ref="HTTP_Listener_config" path="/updateProduct/{id}"/>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="1cd22e26-f628-4cb3-9918-22d1240d973a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="decription"><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-variable>
+				<ee:set-variable variableName="name_product"><![CDATA[%dw 2.0
+output application/json
+---
+payload[1]]]></ee:set-variable>
+				<ee:set-variable variableName="year"><![CDATA[%dw 2.0
+output application/json
+---
+payload[2]]]></ee:set-variable>
+				<ee:set-variable variableName="price"><![CDATA[%dw 2.0
+output application/json
+---
+payload[3]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="175d5ea0-ea7c-4520-8129-1be3e7d7e812" config-ref="Database_Config2" >
+			<db:sql ><![CDATA[select *
+from product
+where id = :ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'ID': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="c3739996-b9a4-425a-89ec-a958d8ffa0a9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="id" ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0][4]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="d808c6c6-3646-4148-85a6-18b2be9ddd1e" >
+			<when expression="#[vars.id != null]">
+				<db:update doc:name="Update" doc:id="d7293607-35d7-4bcd-bdee-b5f3ac18248a" config-ref="Database_Config1">
+					<db:sql ><![CDATA[update product
+set name_product = :name, decription = :description,price = :price,year= :year
+where id=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{"name" : vars.name_product,
+	"description" : vars.decription,
+	"price" : vars.price,
+	"year" : vars.year,
+	"id" : vars.id
+}]]]></db:input-parameters>
+				</db:update>
+				<set-payload value='#["update success fully with id: " ++ vars.id as String]' doc:name="Set Payload" doc:id="812b8498-9015-4cce-acec-c49dc1333bae" />
+			</when>
+			<otherwise >
+				<db:insert doc:name="Insert" doc:id="8afbe660-5a74-4d03-9ebf-3b79cc3e6e83" config-ref="Database_Config1">
+					<db:sql ><![CDATA[INSERT INTO product (decription, name_product, year,price)
+VALUES (:description, :name, :year,:price);]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{"name" : vars.name_product,
+	"description" : vars.decription,
+	"price" : vars.price,
+	"year" : vars.year
+}]]]></db:input-parameters>
+				</db:insert>
+				<ee:transform doc:name="Transform Message" doc:id="79a37d87-86c5-4d84-9148-49320f75ef0b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "not found by id => insert into database" 
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_Copy_of_Copy_of_On Error Propagate" doc:id="acec1dbc-de5b-4e73-8e87-95723f226c72" >
+				<logger level="INFO" doc:name="Copy_of_Copy_of_Copy_of_Logger" doc:id="53ce2ab6-345b-45cd-9642-8ed9eef1e79a" message="connect fail" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
